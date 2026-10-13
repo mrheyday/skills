@@ -7,6 +7,14 @@ and this skill adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 
 ## [Unreleased]
 
+## [0.8.5] - 2026-10-13
+
+### Added
+- distribution.md: signing a bare (non-bundled) CLI Mach-O. Without `codesign -i` / `rcodesign --binary-identifier`, the identifier falls back to the file name or the linker's ad-hoc one (cargo's hashed `deps/<name>-<hash>`), so it can change every release: firewall rules treat each release as a new program, and TCC grants and keychain ACLs likely do too. Covers the fix for both signers and a CI assertion.
+
+### Fixed
+- distribution.md said TCC keys off the bundle identifier; it keys off the code-signing identifier, which only defaults to the bundle ID for bundled code.
+
 ## [0.8.4] - 2026-10-07
 
 ### Fixed

@@ -52,6 +52,29 @@ spctl --assess --type execute MyApp.app
 
 If a running signed app is killed at idle right after a rebuild (e.g. a `make run` loop that replaces the `.app` under the running process), the crash is `SIGKILL` with `EXC_CRASH (Code Signature Invalid)` - not a bug in your code. macOS validates memory-mapped code pages against the on-disk signature lazily; overwriting the bundle invalidates the pages the kernel later faults in, so it terminates the process. Quit the old instance before replacing the bundle, or launch from a copied path.
 
+### Bare CLI binaries: set the code-signing identifier explicitly
+
+A bundle's signing identifier defaults to its `CFBundleIdentifier`. A non-bundled Mach-O (a Rust/Go/Swift CLI shipped as one file) has none, so it gets whatever the signer falls back to - and nothing fails when that fallback is unstable.
+
+**Symptom:** the binary is Developer ID signed, hardened, and notarized, every check passes, yet each release shows up as a new program: firewall rules (Little Snitch keys on [team + identifier](https://help.obdev.at/littlesnitch6/adv-code-identity)) re-prompt, and TCC grants and keychain ACLs likely reset. `codesign -dvvv` shows `Identifier=` changing between releases (`pond-0299b429ffb51fd1` -> `pond-34f43d0cd245ce1c`), and the designated requirement embeds it: `designated => identifier "pond-34f4..." and anchor apple generic and ...`.
+
+**Cause:** `codesign` without `-i` derives the identifier from the file name. `rcodesign sign` without `--binary-identifier` [keeps the identifier already in the Mach-O](https://github.com/indygreg/apple-platform-rs/blob/main/apple-codesign/src/signing_settings.rs) - and the linker's automatic ad-hoc signature took cargo's intermediate filename `deps/<name>-<metadata hash>`, whose hash moves with the version and dependencies.
+
+**Fix:** pass the identifier on every signing path, ad-hoc included. Apple: "If you're signing nonbundled code, add the `-i <BundleID>` option to set the code-signing identifier, where `<BundleID>` is the bundle ID the code would have if it had a bundle ID" ([Creating distribution-signed code for macOS](https://developer.apple.com/documentation/xcode/creating-distribution-signed-code-for-the-mac/)).
+
+```bash
+codesign --force --options runtime --timestamp -i com.example.tool \
+  --sign "Developer ID Application: Your Name (TEAM_ID)" ./tool
+
+rcodesign sign --binary-identifier com.example.tool \
+  --code-signature-flags runtime --p12-file cert.p12 ./tool
+
+# CI signature gate: fail the release if the identifier drifts
+codesign -dvvv ./tool 2>&1 | grep -qx 'Identifier=com.example.tool'
+```
+
+Pick the identifier once and never change it: the switch itself costs every user one re-approval of firewall and privacy rules.
+
 ## Building an existing `.xcodeproj` from the command line
 
 Signing an `.xcodeproj` via `xcodebuild` fails in ways that still report `BUILD SUCCEEDED`. These are the traps that cost the most time.
@@ -76,7 +99,7 @@ codesign -dv --verbose=4 build/MyApp.app 2>&1 | grep -E 'Authority|Signature|fla
 
 **Signature-class changes cost one round of TCC re-prompts.** Switching a bundle between ad-hoc and Developer ID changes its code identity, so the system asks for screen-recording and microphone consent once more. That is expected. Also expected: `spctl -a -vv` reporting `rejected / Unnotarized Developer ID` for a locally signed build - Gatekeeper acts on the quarantine attribute, which `xattr -cr MyApp.app` clears.
 
-**Moving a signed `.app` preserves its TCC grants and preferences.** TCC keys off bundle identifier plus signature, not path, so relocating a bundle does not reset permissions. The safe replace idiom is quit the app, `ditto` the new bundle into place, then `xattr -cr` it.
+**Moving a signed `.app` preserves its TCC grants and preferences.** TCC keys off code-signing identifier (the bundle ID, for a bundle) plus signature, not path, so relocating a bundle does not reset permissions. The safe replace idiom is quit the app, `ditto` the new bundle into place, then `xattr -cr` it.
 
 ## App Store Distribution
 
@@ -262,7 +285,7 @@ A 403 from `xcrun notarytool submit` is almost never a code-signing problem - it
 
 ### TCC is keyed by code-signature CDHash - reinstalls can degrade without error
 
-TCC grants are keyed by the app's CDHash + bundle ID + Developer ID. When a release-channel app is replaced via a force-recursive delete of `/Applications/App.app` followed by `cp -R ./export/App.app /Applications/` (common in `make install` / CI workflows), TCC may remember the grant **but deliver degraded content** - permission reads as authorized, capture APIs start without error, buffers flow at zero amplitude. Direct-reading `~/Library/Application Support/com.apple.TCC/TCC.db` is blocked by SIP, so there is no programmatic recovery.
+TCC grants are keyed by the app's CDHash + code-signing identifier (bundle ID for an app; see the bare-CLI section above for non-bundled tools) + Developer ID. When a release-channel app is replaced via a force-recursive delete of `/Applications/App.app` followed by `cp -R ./export/App.app /Applications/` (common in `make install` / CI workflows), TCC may remember the grant **but deliver degraded content** - permission reads as authorized, capture APIs start without error, buffers flow at zero amplitude. Direct-reading `~/Library/Application Support/com.apple.TCC/TCC.db` is blocked by SIP, so there is no programmatic recovery.
 
 The user-visible remediation: System Settings → Privacy & Security → toggle the permission off, then on again. To prevent the issue:
 - Prefer in-place overwrite (let the OS handle inode swap) over force-recursive replace (rm&#8209;rf + cp&#8209;R).

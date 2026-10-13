@@ -2,7 +2,7 @@
 name: swift-macos
 description: macOS apps with Swift 6.3, SwiftUI, SwiftData, Swift Concurrency, Foundation Models, Swift Testing, and ScreenCaptureKit. Use when building native Mac apps - windows, menus, SwiftData, on-device AI, capture, AppKit bridges, notarization.
 metadata:
-  version: "0.8.4"
+  version: "0.8.5"
   categories: "development"
   topics: "swift, swiftui, macos, swiftdata, screencapturekit"
   upstream: "swift@6.3.3, xcode@26.6, macos@26.6.2"
@@ -490,7 +490,7 @@ See `references/architecture.md` for all patterns with examples.
 | `references/foundation-models.md` | On-device AI: guided generation, tool calling, streaming |
 | `references/architecture.md` | MVVM, TCA, dependency injection, project structure |
 | `references/testing.md` | Swift Testing, exit tests, attachments, UI testing, XCTest migration |
-| `references/distribution.md` | App Store, Developer ID, notarization gotchas, nested bundle signing, xcodebuild signing traps (silent ad-hoc builds), sandboxing, universal binaries |
+| `references/distribution.md` | App Store, Developer ID, notarization gotchas, nested bundle signing, xcodebuild signing traps (silent ad-hoc builds), stable signing identifier for bare CLI binaries, sandboxing, universal binaries |
 | `references/spm-build.md` | Package.swift, Swift Build, plugins, macros, plugin/macro validation gates, Metal toolchain download, manual .app bundle assembly, mixed ObjC targets, CLT testing |
 | **Concurrency** | |
 | `references/approachable-concurrency.md` | Default MainActor isolation, @concurrent, nonisolated async, runtime pitfalls |
