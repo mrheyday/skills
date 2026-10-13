@@ -808,9 +808,14 @@ analogue on object storage. Mechanism, verified at `v11.0.0-beta.2`:
   median from 7.47 s to 5.47 s. Readahead schedules whole pages across many files before the limit
   stops the stream, and after a re-encode each file's `id` column was one multi-megabyte page -
   the flip side of the tiny-page fix above: bigger pages make tiny reads cost more per page.
-  Restricting the check to one fragment (an expected 1-3 requests) was proposed, **not
-  measured**. Same root as the "Lowering `batch_size`" caveat: the page, not the row, is the unit
-  of I/O.
+  **Fixed upstream in v13.0.0** (#9344, "prune V2 LIMIT/OFFSET scans by live row counts;
+  measured 2026-10-13 on a 128-fragment fixture, 12 vs 13 pins, local + `shared-memory://`
+  stores): on 12 the limit pushdown returns `None` for any stable-row-id dataset, so the scan
+  planned all 128 fragments and read-ahead fanned 88-355 GETs across 48-127 files; on 13 the
+  plan prunes to 1 leading fragment from manifest live-row counts (deletions included) - 4-5
+  GETs, one file, ~4.5 KB, deterministic, identical scan results. The application-side
+  workaround (restricting the check to one fragment) is unnecessary on 13. Same root as the
+  "Lowering `batch_size`" caveat: the page, not the row, is the unit of I/O.
 - **Scalar and JSON indexes accelerate `WHERE` pushdown only.** A `GROUP BY
   json_get_string(col, 'name')` or a join key extracted from JSON evaluates the
   expression per row with no predicate to push down - the whole fat column ships over the
