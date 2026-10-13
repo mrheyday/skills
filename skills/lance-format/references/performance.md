@@ -814,7 +814,9 @@ analogue on object storage. Mechanism, verified at `v11.0.0-beta.2`:
   planned all 128 fragments and read-ahead fanned 88-355 GETs across 48-127 files; on 13 the
   plan prunes to 1 leading fragment from manifest live-row counts (deletions included) - 4-5
   GETs, one file, ~4.5 KB, deterministic, identical scan results. The application-side
-  workaround (restricting the check to one fragment) is unnecessary on 13. Same root as the
+  workaround (restricting the check to one fragment) is unnecessary on 13. Confirmed on a real
+  S3-compatible store (2026-10-13, ~4.9M-row table, warm process): 119 GETs / ~79 MB per probe on
+  12, 1 GET / ~3 KB on 13. Same root as the
   "Lowering `batch_size`" caveat: the page, not the row, is the unit of I/O.
 - **Scalar and JSON indexes accelerate `WHERE` pushdown only.** A `GROUP BY
   json_get_string(col, 'name')` or a join key extracted from JSON evaluates the

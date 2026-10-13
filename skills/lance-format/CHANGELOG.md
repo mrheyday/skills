@@ -7,6 +7,16 @@ and this skill adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 
 ## [Unreleased]
 
+## [0.21.1] - 2026-10-13
+
+### Changed
+
+- `references/performance.md`: the unbounded `LIMIT`-scan cost on stable-row-id datasets is now
+  recorded as fixed upstream in `v13.0.0` (#9344). The note carries the 128-fragment fixture
+  measurement (12 vs 13: 128 -> 1 fragment planned, 88-355 -> 4-5 GETs) and a real object-store
+  confirmation: one `scan(id) LIMIT 3` probe went from 119 GETs / ~79 MB to 1 GET / ~3 KB per
+  call. The application-side one-fragment workaround is unnecessary on 13.
+
 ## [0.21.0] - 2026-10-13
 
 ### Added
