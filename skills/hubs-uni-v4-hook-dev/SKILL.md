@@ -2,7 +2,7 @@
 name: hubs-uni-v4-hook-dev
 description: Build Uniswap v4 hooks with Foundry, OpenZeppelin uniswap-hooks, hookmate and Solady - permission bits, address mining, deltas, dynamic fees, NoOp curves, tests, deploys, security. Use for v4 hooks, PoolManager, beforeSwap, HookMiner.
 metadata:
-  version: "0.1.0"
+  version: "0.1.1"
   categories: "development, finance, security"
   topics: "uniswap-v4, hooks, solidity, foundry, defi"
   upstream: "@uniswap/v4-core@1.0.2, @uniswap/v4-periphery@1.0.3, @openzeppelin/uniswap-hooks@b5f1057, hookmate@0.6.0, solady@0.1.26, foundry@1.8.3"
@@ -48,17 +48,17 @@ Two facts in older skills are wrong for v4-core 1.0.2 - trust this skill and `Ho
 ## Quick Start
 
 ```bash
-# Recommended: the official template (OZ uniswap-hooks + hookmate already wired)
+# Official template (OZ hooks + hookmate wired)
 git clone https://github.com/uniswapfoundation/v4-template my-hook && cd my-hook
 git submodule update --init --recursive
 forge test
 
-# Add Solady alongside
+# Add Solady
 forge install Vectorized/solady@v0.1.26
 echo 'solady/=lib/solady/src/' >> remappings.txt
 ```
 
-Manual setup (existing repo) - install, then pin remappings explicitly:
+Existing repo: install, then pin remappings:
 
 ```bash
 forge install OpenZeppelin/uniswap-hooks@b5f1057 akshatmittal/hookmate@v0.6.0 Vectorized/solady@v0.1.26
@@ -98,6 +98,7 @@ Setup gotchas:
 - **One copy of v4-core**, the one nested in `uniswap-hooks`. A second top-level `v4-periphery` install makes forge's auto-remappings fail with `Source ".../src/src/types/PoolKey.sol" not found`. Keep the explicit `v4-core/` and `v4-periphery/` lines.
 - **hookmate artifacts, not core sources.** `PoolManager.sol` pins `pragma 0.8.26` exactly, and hookmate deploys canonical bytecode, so any solc ≥0.8.26 works. Importing `PoolManager.sol` or v4-core's `test/utils/Deployers.sol` forces 0.8.26.
 - **hookmate moved** from `saucepoint/hookmate` (404) to `akshatmittal/hookmate`. Remap `hookmate/=lib/hookmate/src/`; its README's `lib/hookmate/` is wrong.
+- **Periphery dropped `BaseHook`/`HookMiner`** (PR #510, Feb 2026) for `Uniswap/v4-hooks-public`. The docs' `v4-periphery/src/utils/BaseHook.sol` fails on fresh periphery; the pinned uniswap-hooks still nests the old one.
 
 ## Mental Model
 
@@ -238,9 +239,9 @@ contract CappedDynamicFeeHook is BaseHook, Ownable {
 ```
 
 Design choices worth copying:
-- **Pool binding in `beforeInitialize`.** Any address can initialize any `PoolKey` that names your hook. OZ's `onlyValidPools` only checks `key.hooks == this`. Hooks with per-pool or global state must reject unknown pools themselves.
-- **An immutable cap on owner power.** "Liquidity theft via hook fee" and "malicious-owner oracle" are documented incident classes (see `references/security.md`). Bounding admin knobs at construction removes the rug path.
-- **Solady `Ownable` needs `_initializeOwner`.** Without it the owner is `address(0)` and `onlyOwner` reverts `Unauthorized()` forever.
+- **Bind the pool in `beforeInitialize`.** Anyone can initialize any `PoolKey` naming your hook (`onlyValidPools` only checks `key.hooks == this`), so hooks with state must reject unknown pools.
+- **Cap owner power immutably.** Hook-fee theft and malicious-owner oracles are documented incidents (`references/security.md`).
+- **Solady `Ownable` needs `_initializeOwner`,** or the owner stays `address(0)` and `onlyOwner` always reverts.
 
 ## Test It (hookmate harness)
 

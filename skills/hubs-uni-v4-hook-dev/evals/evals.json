@@ -1,0 +1,57 @@
+{
+  "skill_name": "hubs-uni-v4-hook-dev",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "starting a new uniswap v4 hook that skims a 0.1% fee off every swap and sends it to our treasury address. set up the project and write the hook, i want it tested too",
+      "expected_output": "A Foundry project on the v4-template stack (OpenZeppelin uniswap-hooks pinned to commit b5f1057, hookmate, optional Solady) with an afterSwap + afterSwapReturnDelta hook that takes the fee via the unspecified-currency delta, an immutable fee cap, a hookmate-harness test that deploys the hook with deployCodeTo at a flag-encoded address, and a HookMiner deploy script.",
+      "files": [],
+      "expectations": [
+        "Installs or references OpenZeppelin uniswap-hooks at commit b5f1057 and akshatmittal/hookmate, not saucepoint/hookmate",
+        "Enables exactly afterSwap and afterSwapReturnDelta (address bits 6 and 2) and leaves every other permission false",
+        "Starts from an OZ fee base (BaseHookFee or BaseDynamicAfterFee) or returns the fee as an int128 delta on the unspecified currency, settling it inside the same callback",
+        "Bounds the fee with an immutable cap set in the constructor and explains why (hook-fee theft is a documented incident class)",
+        "Test deploys the hook with deployCodeTo at an address whose low 14 bits equal the permission flags, then initializes a PoolKey pointing at it",
+        "Deploy script mines the CREATE2 salt with HookMiner.find using the same constructor args it deploys with"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "poolManager.initialize keeps reverting HookAddressNotValid in my forge test. the hook is deployed with deployCodeTo at address(uint160(Hooks.BEFORE_SWAP_RETURNS_DELTA_FLAG)) and getHookPermissions returns beforeSwap=true, beforeSwapReturnDelta=true, rest false. what's wrong",
+      "expected_output": "Diagnosis that the address carries only bit 3 while getHookPermissions declares both beforeSwap (bit 7) and beforeSwapReturnDelta (bit 3); a returns-delta flag requires its base flag, so the address must be Hooks.BEFORE_SWAP_FLAG | Hooks.BEFORE_SWAP_RETURNS_DELTA_FLAG. Should also note the 0x4444 namespace trick and that BEFORE_SWAP_RETURNS_DELTA is bit 3, not bit 10.",
+      "files": [],
+      "expectations": [
+        "Identifies that the PoolManager validates permissions from the low 14 bits of the hook address, not from getHookPermissions",
+        "States that a *_RETURNS_DELTA flag requires its base flag, so bit 3 needs bit 7 set too",
+        "Gives the corrected flags expression combining Hooks.BEFORE_SWAP_FLAG and Hooks.BEFORE_SWAP_RETURNS_DELTA_FLAG",
+        "Does not claim BEFORE_SWAP_RETURNS_DELTA is bit 10",
+        "Mentions that OZ BaseHook's constructor runs Hooks.validateHookPermissions, so the mismatch would also revert at deploy on a real chain"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "write a forge test asserting that a swap reverts with my hook's custom error TradingClosed() when block.timestamp is outside trading hours. vm.expectRevert(MyHook.TradingClosed.selector) isn't matching",
+      "expected_output": "A test that expects the wrapped revert the PoolManager re-raises: CustomRevert.WrappedError(address(hook), IHooks.beforeSwap.selector, abi.encodeWithSelector(MyHook.TradingClosed.selector), abi.encodeWithSelector(Hooks.HookCallFailed.selector)), with the hook deployed via deployCodeTo and the swap driven through the hookmate router.",
+      "files": [],
+      "expectations": [
+        "Explains that hook reverts arrive wrapped as CustomRevert.WrappedError, which is why the bare selector does not match",
+        "Encodes the expected revert with the hook address, the callback selector, the inner revert data and Hooks.HookCallFailed.selector",
+        "Uses vm.expectRevert with the fully encoded wrapped error bytes rather than the inner selector alone",
+        "Points to references/testing-and-deployment.md for the exact encoding and fuzz/invariant recipes"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "ok hook is tested, deploy it to base mainnet with a forge script. RPC_URL is set",
+      "expected_output": "A forge script that resolves the PoolManager from hookmate's AddressConstants.getPoolManagerAddress(block.chainid), mines the salt with HookMiner.find against forge-std's CREATE2_FACTORY using the exact constructor args, deploys with new Hook{salt: salt}(...) inside a broadcast, asserts the predicted address, and reminds the user to check the Uniswap routing allowlist.",
+      "files": [],
+      "expectations": [
+        "Resolves the PoolManager address from hookmate AddressConstants by chain id instead of hardcoding it",
+        "Mines the CREATE2 salt with HookMiner.find using CREATE2_FACTORY as the deployer and the same constructor args passed to the deployment",
+        "Asserts that the deployed address equals the predicted address after the broadcast",
+        "Runs the script with --rpc-url $RPC_URL and a keystore account or signer flag, never a pasted private key",
+        "Mentions that unlisted hooks are not routed by the Uniswap interface until the hooksAddressesAllowlist includes them"
+      ]
+    }
+  ]
+}

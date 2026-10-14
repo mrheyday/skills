@@ -7,6 +7,17 @@ and this skill adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-15
+
+### Added
+
+- Setup gotcha: `v4-periphery` removed `BaseHook` and `HookMiner` in PR #510 (merged 2026-02-06) in favour of `Uniswap/v4-hooks-public`. The pinned `uniswap-hooks` commit still nests the old copies, so the skill's imports keep compiling; a fresh periphery checkout does not.
+- `evals/evals.json`: four realistic evals (hook-fee scaffold, `HookAddressNotValid` diagnosis, wrapped-revert test, Base deploy script).
+
+### Changed
+
+- Condensed the Quick Start and the reference-hook design notes to keep `SKILL.md` under the 25k-character recommendation.
+
 ## [0.1.0] - 2026-10-14
 
 ### Added
