@@ -2,7 +2,7 @@
 name: foundry-solidity
 description: Build and test Solidity contracts with Foundry. Use when developing Ethereum contracts, writing Forge tests, deploying with scripts, or debugging with Cast/Anvil. Triggers on forge, cast, anvil, foundry.toml, *.t.sol, or *.s.sol.
 metadata:
-  version: "0.2.5"
+  version: "0.2.6"
   categories: "development"
   topics: "solidity, foundry, forge, smart-contracts, ethereum"
   openclaw:
@@ -312,3 +312,7 @@ For detailed guides, see:
 - **Chisel**: See `references/chisel.md` for the interactive Solidity REPL
 - **Cast Advanced**: See `references/cast-advanced.md` for decoding, encoding, wallet management, and batch operations
 - **Anvil Advanced**: See `references/anvil-advanced.md` for impersonation, state manipulation, and mining modes
+
+## Related Skills
+
+- `hubs-uni-v4-hook-dev`: Uniswap v4 hook development on Foundry (OZ uniswap-hooks, hookmate, Solady, HookMiner deploys)
