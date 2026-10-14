@@ -1,0 +1,56 @@
+{
+  "skill_name": "solidity-0-8-37",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "write me a small escrow contract: buyer deposits ETH, seller gets it when buyer confirms, buyer can refund after a deadline. foundry project, solc pinned to 0.8.37",
+      "expected_output": "A contract in Style Guide order with SPDX, exact `pragma solidity 0.8.37;`, named custom errors carrying values, NatSpec on every ABI-visible item, checks-effects-interactions with a checked low-level call instead of transfer/send, a Foundry test file using the documented naming, and the verbatim solcheck and compile_check results.",
+      "files": [],
+      "expectations": [
+        "Reads foundry.toml first and states the compiler, EVM target and via_ir it is writing for",
+        "Every revert is a named custom error (require with a custom error or revert CustomError()); no string reverts, no transfer or send",
+        "Contract members follow the Style Guide order: types, state, events, errors, modifiers, then constructor, receive, fallback, external, public, internal, private",
+        "Ships a Foundry test with test_, testFuzz_ and test_RevertWhen_ cases that match the revert selector",
+        "Runs scripts/solcheck.py and scripts/compile_check.sh and reports their result lines and exit codes verbatim, or says a compiler was not available"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "review this for 0.8.37 compliance:\n\npragma solidity ^0.8.0;\ncontract Pay {\n  function out(address payable to, uint256 a) public { to.transfer(a); }\n  function kill() public { selfdestruct(payable(msg.sender)); }\n  modifier onlyOwner() virtual { _; }\n}",
+      "expected_output": "Findings as file:line -> rule (docs section) -> fix: deprecated transfer, deprecated selfdestruct (EIP-6780 semantics), deprecated virtual modifier, missing SPDX, caret pragma versus exact pin, missing NatSpec, missing access control on kill, and no state-based owner check behind onlyOwner. Ordered by severity, style nits not escalated.",
+      "files": [],
+      "expectations": [
+        "Flags transfer as deprecated and proposes a checked call with a named error",
+        "Flags selfdestruct as deprecated and explains post-EIP-6780 behaviour",
+        "Flags the virtual modifier as deprecated and scheduled for removal",
+        "Flags the missing SPDX identifier and the caret pragma",
+        "Separates security findings (unprotected kill) from style findings (NatSpec, ordering) rather than escalating a nit",
+        "Cites the governing docs sections or quick-rules entries for the deprecations"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "our lib/ folder has hundreds of `/// @solidity memory-safe-assembly` comments and solc 0.8.37 warns about them. convert them all but I need to be sure bytecode doesn't change",
+      "expected_output": "Runs scripts/fix_memory_safe.py --check on the path, then --write, explains that it rewrites the comment to assembly (\"memory-safe\") keeping any dialect flag and fails loudly on anything it cannot convert, and proposes a before/after build comparison with the metadata trailer stripped as the bytecode-neutrality proof. Checks the project's rules before editing a vendored tree.",
+      "files": [],
+      "expectations": [
+        "Uses scripts/fix_memory_safe.py with --check before --write rather than a hand-written sed",
+        "States that the converter writes nothing unless every file converts and reports unconvertible sites by file:line",
+        "Proposes or performs a bytecode comparison with the CBOR metadata trailer stripped to prove the change is behaviour-neutral",
+        "Warns that editing a vendored dependency tree may need the project owner's approval"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "can i use `transient` state vars and `block.slotnum` in a contract targeting arbitrum one today?",
+      "expected_output": "Looks the constructs up in the bundled references instead of guessing: transient state variables exist in 0.8.37 and need an EVM target with TSTORE/TLOAD (cancun or later); block.slotnum is a Glamsterdam-era construct that is not live on Arbitrum One until an ArbOS release ships it, so it must not be used there. States what could not be confirmed and how to confirm it.",
+      "files": [],
+      "expectations": [
+        "Distinguishes language availability in solc 0.8.37 from availability on the target chain",
+        "Says transient state variables are usable with an EVM target that has transient storage",
+        "Says block.slotnum is not live on Arbitrum One and points to the dated edge-dev reference for the status",
+        "Marks any chain-status claim as needing a live re-check rather than asserting it as settled"
+      ]
+    }
+  ]
+}
