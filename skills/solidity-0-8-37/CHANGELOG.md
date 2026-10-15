@@ -7,6 +7,20 @@ and this skill adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.h
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-15
+
+### Added
+
+- `compile_check.sh`: a `COMPILER` switch (`solc` by default, or `solx`, `solx-slang`, or a binary path) that runs the same gate on solx. In Foundry mode it becomes `forge build --use <bin>`. solx gets no `--optimize`, and the Slang-front-end build gets no `--via-ir`, because neither binary accepts them. The script now names the backend it ran.
+- `FORGE_JOBS` sets `forge build -j` (default 10).
+- Tests for an unknown compiler, solx rejecting an exact 0.8.37 pin, solx compiling a floor range, and the Slang build compiling a 0.8.37 fixture.
+- SKILL.md documents what each solx build supports, as measured on 2026-10-15.
+
+### Changed
+
+- `solcheck.py --profile repo` accepts `pragma solidity 0.8.37;` or a floor range `>=0.8.3[4-7] <0.9.0;`. Tests cover two accepted and three rejected forms.
+- `references/repo-profile.md`: when a floor range applies, how to pick its floor (`erc7201()` needs 0.8.35), and the sub-0.8.37 known-bug exposure.
+
 ## [0.1.0] - 2026-10-15
 
 ### Added

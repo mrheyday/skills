@@ -351,7 +351,7 @@ The following subsections describe the format through an example. Comments are o
 // If the value does not contain the ':' delimiter, it is interpreted as the main
 // sequence and the default is used for the cleanup sequence.
 // To make one of the sequences empty, the delimiter must be present at the first or last position.
-// In particular if the whole value consists only of the delimiter, both 
+// In particular if the whole value consists only of the delimiter, both
 ```
 
 ``` sequences are empty.
@@ -630,7 +630,7 @@ The following subsections describe the format through an example. Comments are o
 "@mint_13": { // Internal name of the function
 "entryPoint": 128, // Byte offset into the bytecode where the function starts (optional)
 "id": 13, // AST ID of the function definition or null for compiler- internal functions (optional)
-"parameterSlots": 2, // Number of EVM stack slots for the function 
+"parameterSlots": 2, // Number of EVM stack slots for the function
 ```
 
 ```parameters (optional)

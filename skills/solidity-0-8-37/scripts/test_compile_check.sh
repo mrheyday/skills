@@ -93,5 +93,39 @@ EOF
   expect "$rc" 0 "remappings.txt is passed to solc"
 fi
 
+set +e
+COMPILER=no-such-compiler-xyz bash "$check" "$root/scripts/fixtures/Vault.sol" >"$tmp/nosolx" 2>&1
+rc=$?
+set -e
+expect "$rc" 3 "an unknown COMPILER is not verified"
+
+# solx (solc 0.8.34 front end): an exact 0.8.37 pin is out of range, a floor range compiles.
+if command -v solx >/dev/null 2>&1; then
+  sed 's/^pragma solidity 0\.8\.37;/pragma solidity >=0.8.34 <0.9.0;/' "$root/scripts/fixtures/Escrow.sol" >"$tmp/EscrowRange.sol"
+  set +e
+  COMPILER=solx bash "$check" "$root/scripts/fixtures/Escrow.sol" >"$tmp/solx-pin" 2>&1
+  rc=$?
+  set -e
+  expect "$rc" 1 "solx rejects an exact 0.8.37 pin"
+  set +e
+  COMPILER=solx bash "$check" "$tmp/EscrowRange.sol" >"$tmp/solx-range" 2>&1
+  rc=$?
+  set -e
+  expect "$rc" 0 "solx compiles a >=0.8.34 floor range"
+else
+  echo "NOTE solx not found: solx cases skipped"
+fi
+
+# solx with the Slang front end (language 0.8.37): the exact pin compiles.
+if command -v solx-slang >/dev/null 2>&1; then
+  set +e
+  COMPILER=solx-slang bash "$check" "$root/scripts/fixtures/Escrow.sol" >"$tmp/slang" 2>&1
+  rc=$?
+  set -e
+  expect "$rc" 0 "solx-slang compiles Escrow.sol at 0.8.37"
+else
+  echo "NOTE solx-slang not found: Slang cases skipped"
+fi
+
 printf '\n%s failure(s)\n' "$failures"
 exit "$([[ "$failures" -eq 0 ]] && printf '0' || printf '1')"

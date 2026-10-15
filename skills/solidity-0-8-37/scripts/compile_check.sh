@@ -8,6 +8,11 @@
 #     remappings.txt. This script does not call solc-select and does not change
 #     the compiler selected for later commands.
 #   - No files and no foundry.toml: usage.
+#   - COMPILER selects the backend: unset or `solc` (default), or a solx binary name or path
+#     (`solx`, `solx-slang`, /path/to/solx). Foundry mode passes it as `forge build --use <bin>`.
+#     solx optimizes by default (no --optimize); a Slang-front-end solx also ignores --via-ir.
+#     solx is a build backend, not the language gate: solc remains the authority for diagnostics.
+#   - FORGE_JOBS sets `forge build -j` (default 10).
 #
 # Exit codes: 0 clean, 1 compiler errors, 2 warnings or usage, 3 no compiler.
 # The RESULT line distinguishes warnings from usage.
@@ -15,6 +20,8 @@ set -euo pipefail
 
 EVM_VERSION="${EVM_VERSION:-osaka}"
 SOLC_VERSION="${SOLC_VERSION:-0.8.37}"
+COMPILER="${COMPILER:-solc}"
+FORGE_JOBS="${FORGE_JOBS:-10}"
 
 has_line_prefix() {
   local text="$1"
@@ -52,8 +59,19 @@ solc_version() {
         return 0
         ;;
     esac
-  done < <(solc --version 2>&1 || true)
+  done < <("$COMPILER" --version 2>&1 || true)
   return 0
+}
+
+# Prints "solc", "solx" or "solx-slang" for the selected binary.
+compiler_kind() {
+  local text
+  text="$("$COMPILER" --version 2>&1 || true)"
+  case "$text" in
+    *"Front end: Slang"*) echo "solx-slang" ;;
+    *"LLVM-based Solidity compiler"*) echo "solx" ;;
+    *) echo "solc" ;;
+  esac
 }
 
 load_remappings() {
@@ -80,9 +98,20 @@ load_remappings() {
 
 if [[ $# -eq 0 && -f foundry.toml ]]; then
   if command -v forge >/dev/null 2>&1; then
-    echo "== forge build (foundry.toml governs solc/evm_version/via_ir) =="
+    fargs=(build -j "$FORGE_JOBS")
+    if [[ "$COMPILER" != "solc" ]]; then
+      bin="$(command -v "$COMPILER" || true)"
+      if [[ -z "$bin" ]]; then
+        echo "RESULT: NOT VERIFIED — compiler '$COMPILER' not found."
+        exit 3
+      fi
+      fargs+=(--use "$bin")
+      echo "== forge build -j $FORGE_JOBS --use $bin (foundry.toml governs evm_version/via_ir) =="
+    else
+      echo "== forge build -j $FORGE_JOBS (foundry.toml governs solc/evm_version/via_ir) =="
+    fi
     rc=0
-    out="$(forge build 2>&1)" || rc=$?
+    out="$(forge "${fargs[@]}" 2>&1)" || rc=$?
     printf '%s\n' "$out"
     if [[ $rc -ne 0 ]]; then
       echo "RESULT: compiler errors"
@@ -104,18 +133,25 @@ if [[ $# -eq 0 ]]; then
   exit 2
 fi
 
-if ! command -v solc >/dev/null 2>&1; then
-  echo "RESULT: NOT VERIFIED — no solc on PATH."
+if ! command -v "$COMPILER" >/dev/null 2>&1; then
+  echo "RESULT: NOT VERIFIED — no $COMPILER on PATH."
   exit 3
 fi
 
 ver="$(solc_version)"
-echo "== solc ${ver:-unknown} --via-ir --evm-version $EVM_VERSION =="
+kind="$(compiler_kind)"
+case "$kind" in
+  solc) args=(--via-ir --evm-version "$EVM_VERSION" --optimize --bin) ;;
+  solx) args=(--via-ir --evm-version "$EVM_VERSION" --bin) ;;
+  solx-slang) args=(--evm-version "$EVM_VERSION" --bin) ;;
+esac
+echo "== $kind ($COMPILER) language ${ver:-unknown} ${args[*]%--bin} =="
 if [[ -n "$ver" && "$ver" != "$SOLC_VERSION" ]]; then
   echo "NOTE: compiler is $ver, not $SOLC_VERSION; results are for $ver."
 fi
-
-args=(--via-ir --evm-version "$EVM_VERSION" --optimize --bin)
+if [[ "$kind" != "solc" ]]; then
+  echo "NOTE: $kind is a build backend; run with solc for language diagnostics."
+fi
 remaps=()
 while IFS= read -r line; do
   [[ -n "$line" ]] && remaps+=("$line")
@@ -125,8 +161,8 @@ if [[ ${#remaps[@]} -gt 0 ]]; then
 fi
 
 rc=0
-# Drop --bin bytecode on stdout. Keep diagnostics, which solc writes to stderr.
-out="$(solc "${args[@]}" "$@" 2>&1 >/dev/null)" || rc=$?
+# Drop --bin bytecode on stdout. Keep diagnostics, which solc and solx write to stderr.
+out="$("$COMPILER" "${args[@]}" "$@" 2>&1 >/dev/null)" || rc=$?
 printf '%s\n' "$out"
 if [[ $rc -ne 0 ]] || has_line_prefix "$out" "Error:"; then
   echo "RESULT: compiler errors"

@@ -8,7 +8,11 @@ checkout is the truth.
 
 ## Toolchain pins (verify in `foundry.toml`)
 - `solc = "0.8.37"`, `evm_version = "osaka"`, `via_ir = true`. Pragma in every source file is the exact
-  `pragma solidity 0.8.37;` (no caret/range) unless the repo contract says otherwise.
+  `pragma solidity 0.8.37;`, or a floor range `>=0.8.3[4-7] <0.9.0;` when the repo contract adopts one (no
+  caret). A range lets an alternative compiler with an older front end, such as solx on solc 0.8.34, build the
+  file, while `solc_version` still decides the compiler that ships. Pick the floor from what the file uses:
+  `erc7201()` needs 0.8.35 (solc Changelog), so such a file cannot claim 0.8.34. Building below 0.8.37 exposes
+  the three bugs fixed in 0.8.37 (`known-bugs.md`), so a range is not authority to deploy that bytecode.
 - Foundry is the only test harness. Behavioural claims need `--fork-url` tests against real mainnet addresses;
   mocks alone do not establish behaviour. Label every fork/testnet explicitly; the production target is
   Arbitrum One.

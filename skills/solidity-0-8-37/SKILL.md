@@ -2,7 +2,7 @@
 name: solidity-0-8-37
 description: Canonical Solidity 0.8.37 rules, style guide and NatSpec from the bundled official docs, with a static checker and compile gate. Use for any .sol file, Foundry test or script, EVM, storage, assembly or ABI question, or a Solidity review or audit.
 metadata:
-  version: "0.1.0"
+  version: "0.1.1"
   categories: "development, security"
   topics: "solidity, foundry, smart-contracts, evm, security-audit"
   upstream: "solc@0.8.37, foundry@1.8.3"
@@ -188,7 +188,7 @@ Its tests are in `scripts/test_fix_memory_safe.py`.
   0.8.37 deprecations, bare/string reverts (including when the call is wrapped across lines), empty `catch`,
   unchecked low-level calls judged over the whole statement, `tx.origin`, `selfdestruct`, and `block.difficulty`.
   `now` is a legal 0.8 identifier and is left to the compiler. `__gap` is an allowed non-constant state name.
-  Non-constant `UPPER_CASE` state is rejected. In repo profile the exact pragma is required and warnings fail the exit.
+  Non-constant `UPPER_CASE` state is rejected. In repo profile the pragma must be `0.8.37` or `>=0.8.3[4-7] <0.9.0`, and warnings fail the exit.
   Structure comes from solc's own parser (`--ast-compact-json --stop-after parsing`) when a `solc` binary is
   available, with a regex fallback otherwise; the summary line names the backend that ran (`backend=ast|regex`).
   Two parse-stage gaps are covered from the source text: solc attaches no NatSpec node to state variables, and
@@ -201,6 +201,13 @@ Its tests are in `scripts/test_fix_memory_safe.py`.
   from `remappings.txt`. Exit 0 = clean, 2 = warnings or usage (the `RESULT` line says which), 1 = errors,
   3 = no compiler → report "compilation not verified". A `// forge-lint: disable-next-line(<id>)` is acceptable
   only when narrow and justified. `bash scripts/test_compile_check.sh` checks exits 0, 1, 2, and 3.
+- `COMPILER=solx` (or `solx-slang`, or a binary path) runs the same gate on solx, the LLVM-based compiler
+  (NomicFoundation). Inside a Foundry project it becomes `forge build -j 10 --use <bin>`. solc stays the language
+  authority, and solx is a build backend only. Measured 2026-10-15:
+  - Stable solx 0.1.8 runs the solc 0.8.34 front end. It rejects an exact `0.8.37` pin and `erc7201()`.
+  - The Slang-front-end prerelease (solx 0.2.0, language 0.8.37) compiles single 0.8.37 files. It does not
+    support `erc7201()` yet, skips some solc warnings, panics on some errors, and forge cannot yet read its output.
+  - Both versions refuse a contract that combines memory-unsafe assembly with stack-too-deep.
 
 Fix every error and warning in the source, rerun, and only then move on. If no compiler exists in the
 environment, say exactly that in the final answer; do not describe code as compiling.

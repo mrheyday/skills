@@ -158,5 +158,21 @@ with tempfile.TemporaryDirectory() as tmp:
     rc, lines, _ = run(lib / "Foo.sol", "--backend", "regex")
     expect(rc == 1, "an explicit lib file is still checked")
 
+# Repo-profile pragma rule: the exact pin or a 0.8.34-0.8.37 floor capped below 0.9.0 passes; anything else fails.
+escrow = (FIX / "Escrow.sol").read_text(encoding="utf-8")
+with tempfile.TemporaryDirectory() as td:
+    for pragma, ok in [
+        ("pragma solidity >=0.8.34 <0.9.0;", True),
+        ("pragma solidity >=0.8.37 <0.9.0;", True),
+        ("pragma solidity ^0.8.37;", False),
+        ("pragma solidity >=0.8.33 <0.9.0;", False),
+        ("pragma solidity >=0.8.34;", False),
+    ]:
+        f = Path(td) / "Escrow.sol"
+        f.write_text(escrow.replace("pragma solidity 0.8.37;", pragma, 1), encoding="utf-8")
+        rc, lines, _ = run(f, "--profile", "repo", "--backend", "regex")
+        flagged = "PRAGMA002" in codes(lines)
+        expect(flagged != ok, f"repo profile {'accepts' if ok else 'rejects'} `{pragma}`")
+
 print(f"\n{len(failures)} failure(s)")
 sys.exit(1 if failures else 0)

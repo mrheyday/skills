@@ -785,9 +785,18 @@ def textual_checks(src: str, lines: list[str], profile: str, max_line: int, add)
     if not pragmas:
         add(1, "PRAGMA001", "error", "missing `pragma solidity` (docs §3.4.2)")
     elif profile == "repo":
+        # Exact pin, or a floor inside the supported 0.8.34-0.8.37 window capped below 0.9.0 (lets an
+        # alternative compiler with an older front end, such as solx, build the file; the build's own
+        # `solc_version` still decides the compiler that ships).
+        allowed = r"\s*pragma\s+solidity\s+(0\.8\.37|>=\s*0\.8\.3[4-7]\s+<\s*0\.9\.0)\s*;"
         for i, l in pragmas:
-            if not re.match(r"\s*pragma\s+solidity\s+0\.8\.37\s*;", l):
-                add(i, "PRAGMA002", "error", "repo profile requires exact `pragma solidity 0.8.37;`")
+            if not re.match(allowed, l):
+                add(
+                    i,
+                    "PRAGMA002",
+                    "error",
+                    "repo profile requires `pragma solidity 0.8.37;` or `>=0.8.3[4-7] <0.9.0;`",
+                )
     sev = "error" if profile == "repo" else "warning"
     for i, (l, ml) in enumerate(zip(lines, masked), 1):
         if "\t" in l:
